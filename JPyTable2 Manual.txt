@@ -1,0 +1,20 @@
+###############################################################################################################################
+JPyTable2 (Justin Pimentel, 2025)
+
+Selection types:    (Keep in mind that all values you might want to input are requested after action selection)
+
+HELP: Displays this guide.
+CLER: Clears clutter from the spreadsheet display.
+RENM: Renames the spreadsheet (Requests the name afterwards).
+EXIT: Leaves selected spreadsheet and returns to spreadsheet selection.
+
+X:Y : Selects the cell at X:Y for assignment. Afterwards, value is requested.
+
++COL: Adds a number of columns (asks for the number afterwords).
+-COL: Removes a number of columns (asks for the number afterwords).
++ROW: Adds a number of rows (asks for the number afterwords).
+-ROW: Removes a number of rows (asks for the number afterwords).
+
+SAVE: Saves the spreadsheet data to a CSV file in the application's current directory.
+PRNT: Saves the text display of the spreadsheet. CANNOT be used to save reopen spreadsheet data for future use.
+###############################################################################################################################

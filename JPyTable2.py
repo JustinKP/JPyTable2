@@ -1,0 +1,321 @@
+import os, csv, time, re
+
+def spreadsheetAddColumns(columnsRequested: int):
+    try:
+        if len(spreadsheet) == 0:
+            rows = 1
+        else:
+            rows = len(spreadsheet[0])
+        
+        for i in range(columnsRequested):
+            spreadsheet.append([""]*rows)
+        res = columnsRequested
+    except:
+        res = None
+    
+    return res
+
+def spreadsheetDelColumns(columnsRequested: int):
+    try:
+        for i in range(columnsRequested):
+            spreadsheet.pop()
+        res = columnsRequested
+    except:
+        res = None
+    
+    return res
+
+def spreadsheetAddRows(rowsRequested: int):
+    try:
+        if len(spreadsheet) == 0:
+            spreadsheetAddColumns(1)
+            rowsRequested -= 1 #adding 1 column already adds 1 row
+        
+        for column in range(len(spreadsheet)): #finds each column
+            for i in range(rowsRequested): #appends for x times
+                spreadsheet[column].append("")
+        res = rowsRequested
+    except:
+        res = None
+    
+    return res
+
+def spreadsheetDelRows(rowsRequested: int):
+    global spreadsheet
+    try:
+        if rowsRequested >= len(spreadsheet[0]): #req >= rows, if would empty spreadsheet
+            spreadsheet = []
+        
+        for column in range(len(spreadsheet)): #finds each column
+            for i in range(rowsRequested): #appends for x times
+                spreadsheet[column].pop()
+        res = rowsRequested
+    except:
+        res = None
+    
+    return res
+
+
+
+def editSpreadsheet(label, func, responseText):
+    request = input(label)
+    if not request.isdigit():
+        return request+" is not a valid number, no changes were made."
+    else:
+        response = func(int(request))
+        if response:
+            return str(response)+" "+responseText
+        else:
+            return "Invalid Request"
+
+def getSpreadsheetString(spreadsheet: list, cellLengthMaxOverride = False):
+    if not spreadsheet:
+        return "No spreadsheet data found!"
+    #else,
+    
+    # try:
+    spreadsheetDisplay = spreadsheet.copy()
+    print(spreadsheet)
+    print(spreadsheetDisplay)
+    ###RECURSIVE MADNESS ZONE
+    #Assign :
+    #Brackets?
+    #Divide
+    #Multiply
+    #Add
+    #Subtract
+    #SUM for Row and Columns
+    
+    
+    
+    ###Varaible calculation
+    cols = len(spreadsheetDisplay)
+    rows = len(spreadsheetDisplay[0])
+    
+    rowLengthMax = len(str(rows))
+    if rowLengthMax == 1: #default makes single digits always have a leading 0
+        rowLengthMax = 2
+    
+    #Calculates max length of each cell using the remaining text space
+    def getColumnsMax():
+        try:
+            maxColumns = str(os.get_terminal_size()) #saves maxColumns as the string that shows the terminal size.
+            return int(maxColumns[maxColumns.index("columns=") + len("columns="):maxColumns.index(", line")]) #isolates the string that is the max num of columns in the terminal.
+        except:
+            return 238 
+    if cellLengthMaxOverride: 
+        cellLengthMax = None
+    else:
+        cellLengthMax = int((getColumnsMax()-rowLengthMax)/cols)-1 #AKA -len(" ")   
+    
+    #Calculates min length of each cell using the length of the largest value
+    cellLengthMin = len(str(cols+1)) #minimum length minimum, set to fit largest colomn label
+    for column in range(cols): #for each column:
+        for row in range(rows): #and each row:
+            print(spreadsheetDisplay)
+            print(spreadsheetDisplay[column])
+            print(row)
+            cell = spreadsheetDisplay[column][row]
+            lengthMinPotential = len(str(cell)) #saves the canidate for the minLength.
+            if cellLengthMin < lengthMinPotential: #if it's the longest string so far:
+                cellLengthMin = lengthMinPotential #save the length as the min.
+    del cell, lengthMinPotential
+    if cellLengthMax and cellLengthMin > cellLengthMax:
+        cellLengthMin = cellLengthMax
+    
+    def getPadding(padding: str, length: int, text: str):
+        if not text: text = ""
+        return padding*(length-len(text))
+    
+    
+    
+    ###Column label constructor
+    colLabel = rowLengthMax*" "
+    for col in range(cols): #for each column in that row (x)
+        colString = str(col+1)
+        if len(colString) > cellLengthMin: #shortens the column string if the space can be used
+            colString = colString[len(colString)-cellLengthMin:]
+        colLabel += " " + getPadding(".",cellLengthMin,colString) + colString
+    spreadsheetString = colLabel
+    del colString, colLabel
+    
+    
+    
+    ###Row label and Cell constructor
+    for row in range(rows): #for each row (y)
+        #build the row marker by adding leading 0s to match length of largest row text length, then add row text
+        rowString = str(row+1)
+        rowLabel = getPadding("0",rowLengthMax,rowString) + rowString
+        
+        rowCells = ""
+        for col in range(cols): #for each column in that row (x)            
+            cellValue = spreadsheetDisplay[col][row][:cellLengthMax] #add value to currentLine
+            rowCells += " "+cellValue+getPadding("_",cellLengthMin,cellValue)
+
+        spreadsheetString += "\n"+rowLabel+rowCells
+    del rowString, rowLabel, rowCells
+    
+    
+    del spreadsheetDisplay
+    return spreadsheetString
+    # except:
+        # return "Unknown Error"
+
+def clearAndIntro(filename = "", displayHelp = False):
+    #Clear function
+    if os.name == 'nt': _ = os.system('cls') # for windows
+    else: _ = os.system('clear') # for mac and linux(here, os.name is 'posix')
+    
+    if filename:
+        filename = " - "+filename
+    print("JPyTable2"+filename+" (Justin Pimentel, 2025)")
+    if displayHelp:
+        print("Input \"help\" to view manual"+"\n")
+
+def timestampify(filename: str, extention: str):
+    #This all assumes the timestamp is being saved at the end of the filename
+    timestamp = " "+time.strftime("%Y-%m-%d_%H-%M-%S")+extention
+    def isTimestamp(timestampCandidate):
+        return re.match(r" [0-9]{4}-[0-9]{2}-[0-9]{2}_[0-9]{2}-[0-9]{2}-[0-9]{2}.[a-z]{3}", timestampCandidate) #extention needs to match when saving
+    timestampStartPos = len(filename)-len(timestamp) #index of when timestamp starts
+    
+    if isTimestamp(filename[timestampStartPos:], extention):            #if filename has timestamp
+        for dir in os.listdir():                                        #check each file in folder
+            if dir[:timestampStartPos] == filename[:timestampStartPos]: #if filenames match
+                if isTimestamp(dir[timestampStartPos:], extention):     #and actually has real timestamp
+                    filename = filename[:timestampStartPos]             #remove old timestamp from filename
+                    break
+    return filename+timestamp
+
+def validFilename(filename):
+    if filename.count("\\") or filename.count("/") or filename.count(":") or filename.count("*") or filename.count("\"") or filename.count("<") or filename.count(">") or filename.count("|"):
+        print("File name contains invalid character(s), please try again."+"\n")
+        return False
+    else:
+        return True
+
+while True:
+    #Open or create new spreadsheet
+    spreadsheet = []
+    clearAndIntro()
+    print("CSVs in this directory:")
+    for dir in os.listdir():
+        if dir.endswith(".csv"):
+            print(dir)
+    print()
+    print("Type \"New\" to create a new spreadsheet or provide the name of the CSV file you'd like to open:")
+    while True:
+        filename = input()
+        if validFilename(filename):
+            if filename.upper() == "NEW":
+                filenameIsValid = False
+                while not filenameIsValid:
+                    filename = input("\n"+"New spreadsheet name: ")
+                    filenameIsValid = validFilename(filename)
+                print()
+                spreadsheetAddColumns(columnsRequested=12)
+                spreadsheetAddRows(rowsRequested=12-1)
+                break
+            else:
+                if not filename.lower().count(".csv"):
+                    filename += ".csv"
+                try:
+                    with open(filename, newline='') as file:
+                        for row in csv.reader(file):
+                            spreadsheet.append(row)
+
+                        pivotedData = []
+                        for row in spreadsheet: #THANK YOU Paul Kenjora, flips X and Y so they match up between file and software, then saves as spreadsheet
+                            for column, cell in enumerate(row):
+                                if len(pivotedData) == column: pivotedData.append([])
+                                pivotedData[column].append(cell)
+                        spreadsheet = pivotedData
+                        break
+                except:
+                    print("File not found, please try again."+"\n")
+
+    #Refresh actions
+    refreshDisplay = True
+    cellValue = ""
+    output = ""
+    
+    #Edit spreadsheet
+    while True:
+        ###Display result:      (this is implemented weird but it reuses code well)
+        if refreshDisplay:      clearAndIntro(filename, displayHelp=True)
+        if cellValue:           print("Input:  "+selection+" <- "+cellValue)
+        if output:              print("Output: "+output) #if request has a response
+        if cellValue or output: print()
+        if refreshDisplay:  
+            print(getSpreadsheetString(spreadsheet)+"\n")
+        
+        #Refresh variables
+        refreshDisplay = True
+        cellValue = ""
+        output = ""
+        
+        ###Get request:
+        selection = input("Select: ").upper()
+        match selection:
+            # Display
+            case "HELP": 
+                try:
+                    with open("JPyTable2 Manual.txt", "r") as file:
+                        print("\n"+file.read()+"\n")
+                except:
+                    output = "ERROR: Manual read error, file may not exist"
+                refreshDisplay = False
+            case "" | "CLER" | "CLEAR" | "RELOAD" | "REFRESH" | "DISPLAY": #signals to display refresh mode
+                output = None 
+            case "RENM" | "RENAME" | "NAME":
+                newFilename = input("\n"+"Spreadsheet name: ")
+                if validFilename(newFilename):
+                    filename = newFilename
+                del newFilename
+            case "EXIT": break #Leaves selected spreadsheet and returns to spreadsheet selection.
+            # Table format
+            case "+COL" | "+COLS" | "+COLUMN" | "+COLUMNS":         output = editSpreadsheet("Columns:", spreadsheetAddColumns, "Columns Added")
+            case "-COL" | "-COLS" | "-COLUMN" | "-COLUMNS":         output = editSpreadsheet("Columns:", spreadsheetDelColumns, "Columns Removed")
+            case "+ROW" | "+ROWS":                                  output = editSpreadsheet("Rows:", spreadsheetAddRows, "Rows Added")
+            case "-ROW" | "-ROWS":                                  output = editSpreadsheet("Rows:", spreadsheetDelRows, "Rows Removed")
+            # Save table to file
+            case "SAVE":
+                filename = timestampify(filename, ".csv")
+                with open(filename, 'w', newline='') as file:
+                    write = csv.writer(file)
+                    write.writerows(spreadsheet)
+                output = "File backup saved to "+filename
+                refreshDisplay = False
+            case "PRNT" | "PRINT":
+                filename = timestampify(filename, ".txt")
+                with open(filename, 'w') as file:
+                    file.write(getSpreadsheetString(spreadsheet, cellLengthMaxOverride=True))
+                output = "File printed to "+filename
+                refreshDisplay = False
+            # Input using coords or discard selection
+            case _:
+                coordsStr = selection.replace(",",":").replace(";",":")
+                errorMessage = ""
+                try:
+                    if coordsStr.count(":") != 1:
+                        errorMessage = "Coordinates must have only one seperator [:] between X and Y"
+                    else:
+                        coords = coordsStr.split(":")
+                        if not coords[0].isdigit() or not coords[1].isdigit():
+                            errorMessage = "Coordinates must use positive numbers."
+                        elif int(coords[0]) > len(spreadsheet) or int(coords[1]) > len(spreadsheet[0]):
+                            errorMessage = "Coordinates outside of bounds of table."
+                except Exception as e:
+                    errorMessage = e.__str__()
+                
+                if errorMessage: #flag error if coords not found
+                    output = "Invalid command or invalid coordinates ("+errorMessage+")"
+                    refreshDisplay = False
+                else:
+                    cellValue = input("Value:  ")
+                    try:
+                        x = int(coords[0])-1
+                        y = int(coords[1])-1
+                        spreadsheet[x][y] = cellValue
+                    except:
+                        output = "Error, Invalid Request"
