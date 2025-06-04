@@ -1,4 +1,4 @@
-import os, csv, time, re
+import os, csv, time, re, copy
 
 def spreadsheetAddColumns(columnsRequested: int):
     try:
@@ -74,23 +74,64 @@ def getSpreadsheetString(spreadsheet: list, cellLengthMaxOverride = False):
     #else,
     
     # try:
-    spreadsheetDisplay = spreadsheet.copy()
-    print(spreadsheet)
-    print(spreadsheetDisplay)
-    ###RECURSIVE MADNESS ZONE
-    #Assign :
-    #Brackets?
-    #Divide
-    #Multiply
-    #Add
-    #Subtract
-    #SUM for Row and Columns
-    
-    
+    spreadsheetDisplay = copy.deepcopy(spreadsheet)
     
     ###Varaible calculation
     cols = len(spreadsheetDisplay)
     rows = len(spreadsheetDisplay[0])
+    
+    def cellFunctionResolver(cell: str, cellInit=None, iteration=0):
+        if type(cell) != str:
+            cell = str(cell)
+        if not cellInit: #assign cellInit 
+            cellInit = cell
+        
+        def splitter(string, seperator):
+            a,b = string.split(seperator)
+            #We also have function resolution recursion within aspects of functions like this
+            a = cellFunctionResolver(a)
+            b = cellFunctionResolver(b)
+            if a.isdigit() and b.isdigit(): #do we need to cast as string?
+                return int(a),int(b)
+            else:
+                return None,None
+        
+        while True: #Brackets resolution
+            bracketIndex1 = cell.find("(")
+            bracketIndex2 = cell.find(")")
+            if bracketIndex1 > -1 and bracketIndex1 < bracketIndex2:
+                cell = cell[:bracketIndex1]+cellFunctionResolver(cell[bracketIndex1+1:bracketIndex2])+cell[bracketIndex2+1:] #the plus one gets rid of the brackets
+            else:
+                break
+        
+        iteration += 1
+        if iteration > (cols*rows):
+            return "!RECUR-REF"
+        if cell.count(":") == 1: #Assign
+            cellCol, cellRow = splitter(cell, ":")
+            if cellCol:
+                if cellCol <= cols and cellRow <= rows: #if valid request
+                    return cellFunctionResolver(spreadsheetDisplay[cellCol-1][cellRow-1],cellInit,iteration) #get value (checked for function) at those coords
+                else:
+                    return "!RANGE-REF"
+            #else: if invalid don't do anything
+        elif cell.count("/") > 0: #Divide
+            a,b = splitter(cell, "/")
+            if a: 
+                if b>0: return a/b
+                else:   return "!DIV-0-ERR"
+        elif cell.count("*") > 0: #Multiply
+            a,b = splitter(cell, "*")
+            if a: return a*b
+        elif cell.count("+") > 0: #Add
+            a,b = splitter(cell, "+")
+            if a: return a+b
+        elif cell.count("-") > 0: #Subtract
+            a,b = splitter(cell, "-")
+            if a: return a-b
+        #SUM for Row and Columns 
+        
+        return cell
     
     rowLengthMax = len(str(rows))
     if rowLengthMax == 1: #default makes single digits always have a leading 0
@@ -108,14 +149,20 @@ def getSpreadsheetString(spreadsheet: list, cellLengthMaxOverride = False):
     else:
         cellLengthMax = int((getColumnsMax()-rowLengthMax)/cols)-1 #AKA -len(" ")   
     
+    
+    ###Varaible calculation AND Function resolution!
     #Calculates min length of each cell using the length of the largest value
     cellLengthMin = len(str(cols+1)) #minimum length minimum, set to fit largest colomn label
     for column in range(cols): #for each column:
         for row in range(rows): #and each row:
-            print(spreadsheetDisplay)
-            print(spreadsheetDisplay[column])
-            print(row)
-            cell = spreadsheetDisplay[column][row]
+            cell = str(spreadsheetDisplay[column][row])
+            
+            if len(cell) > 3 and cell[0] == "=":
+                cellResolved = str(cellFunctionResolver(cell[1:]))       #resolves cell function if exists
+                if ("="+cellResolved) != cell:                      #if cell had function
+                    spreadsheetDisplay[column][row] = cellResolved  #save table cell as resolved cell
+                    cell = cellResolved                             #save cell var (for length) as resolved cell as well
+            
             lengthMinPotential = len(str(cell)) #saves the canidate for the minLength.
             if cellLengthMin < lengthMinPotential: #if it's the longest string so far:
                 cellLengthMin = lengthMinPotential #save the length as the min.
@@ -149,14 +196,13 @@ def getSpreadsheetString(spreadsheet: list, cellLengthMaxOverride = False):
         
         rowCells = ""
         for col in range(cols): #for each column in that row (x)            
-            cellValue = spreadsheetDisplay[col][row][:cellLengthMax] #add value to currentLine
+            cellValue = str(spreadsheetDisplay[col][row])[:cellLengthMax] #add value to currentLine
             rowCells += " "+cellValue+getPadding("_",cellLengthMin,cellValue)
 
         spreadsheetString += "\n"+rowLabel+rowCells
     del rowString, rowLabel, rowCells
     
     
-    del spreadsheetDisplay
     return spreadsheetString
     # except:
         # return "Unknown Error"
@@ -172,6 +218,16 @@ def clearAndIntro(filename = "", displayHelp = False):
     if displayHelp:
         print("Input \"help\" to view manual"+"\n")
 
+def pivotTable(table):
+    #THANK YOU Paul Kenjora
+    #Pivots 2D list by flipping data stored at X:Y to Y:X
+    pivotedData = []
+    for row in table:
+        for column, cell in enumerate(row):
+            if len(pivotedData) == column: pivotedData.append([])
+            pivotedData[column].append(cell)
+    return pivotedData
+
 def timestampify(filename: str, extention: str):
     #This all assumes the timestamp is being saved at the end of the filename
     timestamp = " "+time.strftime("%Y-%m-%d_%H-%M-%S")+extention
@@ -179,10 +235,10 @@ def timestampify(filename: str, extention: str):
         return re.match(r" [0-9]{4}-[0-9]{2}-[0-9]{2}_[0-9]{2}-[0-9]{2}-[0-9]{2}.[a-z]{3}", timestampCandidate) #extention needs to match when saving
     timestampStartPos = len(filename)-len(timestamp) #index of when timestamp starts
     
-    if isTimestamp(filename[timestampStartPos:], extention):            #if filename has timestamp
+    if isTimestamp(filename[timestampStartPos:]):            #if filename has timestamp
         for dir in os.listdir():                                        #check each file in folder
             if dir[:timestampStartPos] == filename[:timestampStartPos]: #if filenames match
-                if isTimestamp(dir[timestampStartPos:], extention):     #and actually has real timestamp
+                if isTimestamp(dir[timestampStartPos:]):     #and actually has real timestamp
                     filename = filename[:timestampStartPos]             #remove old timestamp from filename
                     break
     return filename+timestamp
@@ -224,12 +280,7 @@ while True:
                         for row in csv.reader(file):
                             spreadsheet.append(row)
 
-                        pivotedData = []
-                        for row in spreadsheet: #THANK YOU Paul Kenjora, flips X and Y so they match up between file and software, then saves as spreadsheet
-                            for column, cell in enumerate(row):
-                                if len(pivotedData) == column: pivotedData.append([])
-                                pivotedData[column].append(cell)
-                        spreadsheet = pivotedData
+                        spreadsheet = pivotTable(spreadsheet) #flips X and Y so they match up between file and software, then saves as spreadsheet
                         break
                 except:
                     print("File not found, please try again."+"\n")
@@ -283,7 +334,7 @@ while True:
                 filename = timestampify(filename, ".csv")
                 with open(filename, 'w', newline='') as file:
                     write = csv.writer(file)
-                    write.writerows(spreadsheet)
+                    write.writerows(pivotTable(spreadsheet)) #writes rotated spreadsheet to match actual and expected x and y
                 output = "File backup saved to "+filename
                 refreshDisplay = False
             case "PRNT" | "PRINT":
@@ -316,6 +367,10 @@ while True:
                     try:
                         x = int(coords[0])-1
                         y = int(coords[1])-1
-                        spreadsheet[x][y] = cellValue
+                        
+                        if cellValue.isdigit():
+                            spreadsheet[x][y] = int(cellValue)
+                        else:
+                            spreadsheet[x][y] = cellValue
                     except:
                         output = "Error, Invalid Request"
