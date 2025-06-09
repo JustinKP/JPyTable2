@@ -9,11 +9,24 @@ RENM: Renames the spreadsheet (Requests the name afterwards).
 EXIT: Leaves selected spreadsheet and returns to spreadsheet selection.
 
 X:Y : Selects the cell at X:Y for assignment. Afterwards, value is requested.
+    =SUMCOL[Start Y]:[End Y] : Returns the sum of the cell values on the current column between (including) the specified rows.
+    =SUMROW[Start X]:[End X] : Returns the sum of the cell values on the current row between (including) the specified columns.
+    =X:Y : Returns / references the cell value at the specified coordinates.
+    =1/2 : Divides number 1 by number 2 (would return 0.5).
+    =1*2 : Multiplies number 1 by number 2 (would return 2).
+    =1+2 : Adds number 1 to number 2 (would return 3).
+    =1-2 : Subtracts number 1 from number 2 (would return -1).
+        (Function) : Returns the resulting value of the function, for the combination of functions.
+        e.g.: if =SUMCOL4:6 was 4 and the value of the cell at 5:7 was 1 then
+              =(SUMCOL4:6)+(5:7) would be equivalent to
+              =(4)+(1) which would return 5
 
 +COL: Adds a number of columns (asks for the number afterwords).
 -COL: Removes a number of columns (asks for the number afterwords).
+=COL: Adds or removes the necessary number of columns (to reach the number specified afterwards)
 +ROW: Adds a number of rows (asks for the number afterwords).
 -ROW: Removes a number of rows (asks for the number afterwords).
+=ROW: Adds or removes the necessary number of rows (to reach the number specified afterwards)
 
 SAVE: Saves the spreadsheet data to a CSV file in the application's current directory.
 PRNT: Saves the text display of the spreadsheet. CANNOT be used to save reopen spreadsheet data for future use.
